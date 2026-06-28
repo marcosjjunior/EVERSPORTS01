@@ -249,7 +249,7 @@ nav { padding: 12px 8px; flex: 1; }
         </div>
         <div class="painel">
           <table class="tabela">
-            <thead><tr><th>Nome</th><th>Empresa</th><th>WhatsApp</th><th>E-mail</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>WhatsApp</th><th>Qtd. Peças</th><th>Serviço</th><th>Material</th><th>Pagamento</th><th>Mockup</th><th></th></tr></thead>
             <tbody id="tbody-clientes"></tbody>
           </table>
         </div>
@@ -579,23 +579,74 @@ document.getElementById('busca-clientes').oninput = e=>{ buscaCli=e.target.value
 document.getElementById('btn-novo-cliente').onclick = ()=>formCliente();
 
 function renderClientes(){
-  const filtrados=CLIENTES.filter(c=>!buscaCli||[c.nome,c.empresa,c.email,c.whatsapp].filter(Boolean).some(x=>x.toLowerCase().includes(buscaCli)));
+  const filtrados=CLIENTES.filter(c=>!buscaCli||[c.nome,c.whatsapp,c.email].filter(Boolean).some(x=>x.toLowerCase().includes(buscaCli)));
+  const badgePag = v => {
+    if(v==='avista') return '<span class="badge badge-pago">À vista</span>';
+    if(v==='parcelado') return '<span class="badge badge-parcial">Parcelado</span>';
+    if(v==='pendente') return '<span class="badge badge-pendente">Pendente</span>';
+    return v||'—';
+  };
+  const badgeMat = v => {
+    const cores = {sublimacao:'background:rgba(100,160,255,.15);color:#78aaff', algodao:'background:rgba(255,182,72,.15);color:#ffb648', bordado:'background:rgba(30,224,140,.15);color:#1ee08c'};
+    const labels = {sublimacao:'Sublimação', algodao:'Algodão', bordado:'Bordado'};
+    return v ? `<span class="badge" style="${cores[v]||''}">${labels[v]||v}</span>` : '—';
+  };
   document.getElementById('tbody-clientes').innerHTML = filtrados.length
-    ? filtrados.map(c=>`<tr><td><b>${esc(c.nome)}</b></td><td>${esc(c.empresa)||'—'}</td><td>${esc(c.whatsapp)||'—'}</td><td>${esc(c.email)||'—'}</td><td><button onclick="formCliente(CLIENTES.find(x=>x.id==='${c.id}'))" style="background:none;border:1px solid #243028;color:#8a9e90;padding:5px 10px;border-radius:4px;cursor:pointer">✎</button></td></tr>`).join('')
-    : '<tr><td colspan="5" class="vazio">Nenhum cliente encontrado.</td></tr>';
+    ? filtrados.map(c=>`<tr>
+        <td><b>${esc(c.nome)}</b><br><span style="font-size:11px;color:var(--dimmed)">${esc(c.whatsapp)||''}</span></td>
+        <td style="font-family:monospace">${c.qtd_pecas||'—'}</td>
+        <td>${esc(c.tipo_servico)||'—'}</td>
+        <td>${badgeMat(c.material)}</td>
+        <td>${badgePag(c.pagamento)}</td>
+        <td>${c.mockup_url?`<a href="${esc(c.mockup_url)}" target="_blank" style="color:var(--verde);font-size:12px">Ver mockup</a>`:'—'}</td>
+        <td><button onclick="formCliente(CLIENTES.find(x=>x.id==='${c.id}'))" style="background:none;border:1px solid #243028;color:#8a9e90;padding:5px 10px;border-radius:4px;cursor:pointer">✎</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="8" class="vazio">Nenhum cliente encontrado.</td></tr>';
 }
 
 function formCliente(c=null){
   const edit=!!c;
+  const chk = (id,val,label) => `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;color:var(--texto)"><input type="radio" name="${id}" value="${val}" ${c?.[id]===val?'checked':''} style="accent-color:var(--verde);width:15px;height:15px"> ${label}</label>`;
   abrirModal(edit?'Editar cliente':'Novo cliente',`
     <div class="form-grupo"><label>Nome *</label><input type="text" id="f-nome" value="${esc(c?.nome||'')}"></div>
-    <div class="form-grupo"><label>Empresa</label><input type="text" id="f-emp" value="${esc(c?.empresa||'')}"></div>
     <div class="form-linha">
-      <div class="form-grupo"><label>WhatsApp</label><input type="text" id="f-wpp" value="${esc(c?.whatsapp||'')}"></div>
+      <div class="form-grupo"><label>WhatsApp *</label><input type="text" id="f-wpp" value="${esc(c?.whatsapp||'')}"></div>
       <div class="form-grupo"><label>E-mail</label><input type="email" id="f-email2" value="${esc(c?.email||'')}"></div>
     </div>
+    <div class="form-linha">
+      <div class="form-grupo"><label>Quantidade de peças *</label><input type="number" id="f-qtd" min="1" value="${c?.qtd_pecas||''}"></div>
+      <div class="form-grupo"><label>Tipo de serviço *</label><select id="f-servico">
+        <option value="">Selecione...</option>
+        <option value="Camisa" ${c?.tipo_servico==='Camisa'?'selected':''}>Camisa</option>
+        <option value="Camiseta" ${c?.tipo_servico==='Camiseta'?'selected':''}>Camiseta</option>
+        <option value="Fardamento" ${c?.tipo_servico==='Fardamento'?'selected':''}>Fardamento</option>
+        <option value="Uniforme" ${c?.tipo_servico==='Uniforme'?'selected':''}>Uniforme</option>
+        <option value="Evento" ${c?.tipo_servico==='Evento'?'selected':''}>Evento</option>
+        <option value="Personalizado" ${c?.tipo_servico==='Personalizado'?'selected':''}>Personalizado</option>
+      </select></div>
+    </div>
+    <div class="form-grupo"><label>Material * <span style="color:var(--vermelho)">— obrigatório</span></label>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:6px">
+        ${chk('material','sublimacao','🎨 Sublimação')}
+        ${chk('material','algodao','👕 Algodão')}
+        ${chk('material','bordado','🪡 Bordado')}
+      </div>
+    </div>
+    <div class="form-grupo"><label>Forma de pagamento * <span style="color:var(--vermelho)">— obrigatório</span></label>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:6px">
+        ${chk('pagamento','avista','💵 À vista')}
+        ${chk('pagamento','parcelado','💳 Parcelado')}
+        ${chk('pagamento','pendente','⏳ A definir')}
+      </div>
+    </div>
+    <div class="form-grupo"><label>Link do Mockup <span style="color:var(--dimmed);font-weight:400">(Google Drive, Dropbox, etc.)</span></label>
+      <input type="url" id="f-mockup" placeholder="https://..." value="${esc(c?.mockup_url||'')}">
+    </div>
+    <div class="form-grupo"><label>Descrição / Observações *</label>
+      <textarea id="f-desc" style="min-height:90px" placeholder="Descreva detalhes do pedido: cores, tamanhos, prazo, referências...">${c?.descricao||''}</textarea>
+    </div>
     <div class="form-acoes">
-      ${edit?`<button class="btn-cancelar" id="btn-del-cli" style="color:#ff5d5d;border-color:#ff5d5d">Excluir</button>`:''}
+      ${edit?'<button class="btn-cancelar" id="btn-del-cli" style="color:#ff5d5d;border-color:#ff5d5d">Excluir</button>':''}
       <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
       <button class="btn-salvar" id="btn-salvar-cli">${edit?'Salvar':'Cadastrar'}</button>
     </div>`);
@@ -608,8 +659,25 @@ function formCliente(c=null){
   };
 
   document.getElementById('btn-salvar-cli').onclick = async ()=>{
-    const payload={ nome:document.getElementById('f-nome').value.trim(), empresa:document.getElementById('f-emp').value.trim()||null, whatsapp:document.getElementById('f-wpp').value.trim()||null, email:document.getElementById('f-email2').value.trim()||null };
-    if(!payload.nome){ toast('Nome obrigatório',true); return; }
+    const nome    = document.getElementById('f-nome').value.trim();
+    const wpp     = document.getElementById('f-wpp').value.trim();
+    const email   = document.getElementById('f-email2').value.trim();
+    const qtd     = document.getElementById('f-qtd').value;
+    const servico = document.getElementById('f-servico').value;
+    const material  = document.querySelector('input[name="material"]:checked')?.value||'';
+    const pagamento = document.querySelector('input[name="pagamento"]:checked')?.value||'';
+    const mockup  = document.getElementById('f-mockup').value.trim();
+    const desc    = document.getElementById('f-desc').value.trim();
+
+    if(!nome)     { toast('Nome é obrigatório!',true); return; }
+    if(!wpp)      { toast('WhatsApp é obrigatório!',true); return; }
+    if(!qtd||Number(qtd)<1) { toast('Informe a quantidade de peças!',true); return; }
+    if(!servico)  { toast('Selecione o tipo de serviço!',true); return; }
+    if(!material) { toast('Selecione o material (Sublimação, Algodão ou Bordado)!',true); return; }
+    if(!pagamento){ toast('Selecione a forma de pagamento!',true); return; }
+    if(!desc)     { toast('Preencha a descrição / observações!',true); return; }
+
+    const payload={ nome, whatsapp:wpp||null, email:email||null, qtd_pecas:Number(qtd), tipo_servico:servico, material, pagamento, mockup_url:mockup||null, descricao:desc };
     const {error}=edit ? await sb.from('clientes').update(payload).eq('id',c.id) : await sb.from('clientes').insert(payload);
     if(error){ toast('Erro: '+error.message,true); return; }
     toast(edit?'Cliente atualizado!':'Cliente cadastrado!'); fecharModal();
